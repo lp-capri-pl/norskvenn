@@ -1,0 +1,13 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Norskvenn — Whisper worker</title>
+  </head>
+  <body>
+    <!-- This document is never visible. It exists so Whisper (which needs a
+         DOM-like environment for the WebAudio + WASM runtime) has somewhere
+         to run that survives navigation in the user's youtube.com tab. -->
+    <script type="module" src="./offscreen.js"></script>
+  </body>
+</html>

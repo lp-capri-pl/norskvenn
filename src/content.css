@@ -1,0 +1,82 @@
+/* Button injected into the YouTube actions bar. */
+.norskvenn-btn {
+  font: 500 13px/1 'YouTube Sans', 'Roboto', sans-serif;
+  background: #c8243a;
+  color: #fff;
+  border: none;
+  border-radius: 18px;
+  padding: 0 14px;
+  height: 36px;
+  cursor: pointer;
+  margin-right: 8px;
+  transition: filter 0.15s;
+}
+.norskvenn-btn:hover  { filter: brightness(1.08); }
+.norskvenn-btn.active { background: #4a4a4a; }
+
+/* Bilingual cue overlay anchored over the player. Fills the whole player
+   so the draggable cue can use top/left percentages in both axes. */
+.norskvenn-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 60;            /* above YT's own caption layer */
+  pointer-events: none;
+}
+.norskvenn-status {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font: 500 12px/1.4 'Roboto', sans-serif;
+  padding: 4px 10px;
+  border-radius: 4px;
+  pointer-events: none;
+  max-width: 50%;
+}
+.norskvenn-cue {
+  /* Default position: bottom-center of the player. JS overrides these with
+     left/top % once the user drags it. */
+  position: absolute;
+  left: 50%;
+  bottom: 12%;
+  transform: translateX(-50%);
+
+  max-width: 80%;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.72);
+  border-radius: 6px;
+  color: #fff;
+  cursor: move;
+  pointer-events: auto;     /* let user grab + drag this even though parent is pointer-events: none */
+  user-select: none;
+}
+.norskvenn-cue:hover     { outline: 1px dashed rgba(255, 255, 255, 0.3); }
+.norskvenn-cue.dragging  { outline: 1px solid #ffd86b; cursor: grabbing; }
+.norskvenn-cue:empty { display: none; }
+.norskvenn-no {
+  font: 600 22px/1.3 'Roboto', sans-serif;
+  color: #ffffff;
+}
+.norskvenn-en {
+  font: 500 18px/1.3 'Roboto', sans-serif;
+  color: #ffd86b;
+  margin-top: 4px;
+}
+.norskvenn-no:empty, .norskvenn-en:empty { display: none; }
+.norskvenn-no.stale, .norskvenn-en.stale {
+  opacity: 0.55;
+  font-style: italic;
+}
+
+.norskvenn-lag {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(180, 80, 30, 0.85);
+  color: #fff;
+  font: 500 11px/1.4 'Roboto', sans-serif;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+.norskvenn-lag:empty { display: none; }
