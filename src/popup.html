@@ -38,6 +38,19 @@
     </fieldset>
 
     <fieldset>
+      <legend>Subtitle update interval</legend>
+      <div class="interval-row">
+        <label class="interval"><input type="radio" name="chunkSeconds" value="3"><span>3s<small>snappiest</small></span></label>
+        <label class="interval"><input type="radio" name="chunkSeconds" value="5"><span>5s<small>balanced</small></span></label>
+        <label class="interval"><input type="radio" name="chunkSeconds" value="10"><span>10s<small>most accurate</small></span></label>
+      </div>
+      <p class="hint">
+        Smaller = subtitles arrive more often (less waiting). Cost is the same
+        either way. Restart capture (stop + start) to apply.
+      </p>
+    </fieldset>
+
+    <fieldset>
       <legend>Subtitle timing</legend>
       <div class="offset-row">
         <button type="button" class="nudge" data-delta="-0.5">− 0.5s</button>
@@ -50,6 +63,15 @@
       <p class="hint">
         Subs late? Use <b>+</b>. Subs early? Use <b>−</b>. Changes apply
         immediately to the current YouTube tab on save.
+      </p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Maintenance</legend>
+      <button type="button" id="clear-cache" class="danger">Clear subtitle cache</button>
+      <p class="hint">
+        Wipes all cached subtitles. Use this if subs from an older version are
+        mis-timed — clear, then re-transcribe to rebuild with correct timing.
       </p>
     </fieldset>
 

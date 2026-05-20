@@ -12,23 +12,19 @@
  */
 
 const SAMPLE_RATE = 16000;
-// Whisper was trained on 30 s windows but the pipeline pads shorter inputs
-// automatically. Smaller chunks = first sub appears 3x sooner with similar
-// per-chunk inference cost.
-const CHUNK_SECONDS = 10;
-const CHUNK_SAMPLES = SAMPLE_RATE * CHUNK_SECONDS;
 
 export class AudioCapturer {
-  constructor(videoEl, { onChunk } = {}) {
+  constructor(videoEl, { onChunk, chunkSeconds = 5 } = {}) {
     this.videoEl = videoEl;
     this.onChunk = onChunk;
+    this.chunkSamples = Math.round(SAMPLE_RATE * chunkSeconds);
 
     this.audioCtx = null;
     this.source = null;
     this.processor = null;
     this.stream = null;
 
-    this.buffer = new Float32Array(CHUNK_SAMPLES);
+    this.buffer = new Float32Array(this.chunkSamples);
     this.bufferOffset = 0;
     this.running = false;
 
@@ -103,13 +99,13 @@ export class AudioCapturer {
     const input = e.inputBuffer.getChannelData(0);   // mono
     const n = input.length;
 
-    if (this.bufferOffset + n <= CHUNK_SAMPLES) {
+    if (this.bufferOffset + n <= this.chunkSamples) {
       this.buffer.set(input, this.bufferOffset);
       this.bufferOffset += n;
     } else {
       // Fill the rest of the current chunk, ship it, then start a new chunk
       // with the leftover samples.
-      const room = CHUNK_SAMPLES - this.bufferOffset;
+      const room = this.chunkSamples - this.bufferOffset;
       this.buffer.set(input.subarray(0, room), this.bufferOffset);
       this._emit();
       const leftover = input.subarray(room);
@@ -117,7 +113,7 @@ export class AudioCapturer {
       this.bufferOffset = leftover.length;
     }
 
-    if (this.bufferOffset >= CHUNK_SAMPLES) {
+    if (this.bufferOffset >= this.chunkSamples) {
       this._emit();
     }
   }

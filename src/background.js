@@ -60,6 +60,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           return;
         }
 
+        // Popup → content scripts: clear the IndexedDB subtitle cache (which
+        // lives in the youtube.com origin, not the extension origin, so the
+        // popup can't clear it directly).
+        case 'clear-cache': {
+          await broadcastToYtTabs({ type: 'clear-cache' });
+          sendResponse({ ok: true });
+          return;
+        }
+
         case 'get-engine': {
           const s = await getSettings();
           sendResponse({ ok: true, engine: s.engine, hasApiKey: !!s.apiKey });

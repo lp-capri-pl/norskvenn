@@ -11,20 +11,26 @@
  */
 
 import { AudioCapturer } from './lib/audio.js';
-import { loadSubs, saveSubs } from './lib/cache.js';
+import { loadSubs, saveSubs, clearAllSubs } from './lib/cache.js';
 import { bilingualSrt } from './lib/srt.js';
 
-// Live-read subtitle timing offset from chrome.storage. Updated via the
-// popup's +/-0.1s and +/-0.5s buttons; renderCue picks up changes within
-// one tick (250ms).
+// Live-read tunables from chrome.storage. Updated via the popup; renderCue /
+// the next capture session pick up changes.
 let subsOffset = 0;
-chrome.storage?.local.get(['subsOffset'], (s) => {
+let chunkSeconds = 5;
+chrome.storage?.local.get(['subsOffset', 'chunkSeconds'], (s) => {
   subsOffset = s.subsOffset || 0;
+  chunkSeconds = s.chunkSeconds || 5;
 });
 chrome.storage?.onChanged.addListener((changes, area) => {
-  if (area === 'local' && changes.subsOffset) {
+  if (area !== 'local') return;
+  if (changes.subsOffset) {
     subsOffset = changes.subsOffset.newValue || 0;
     console.log(`[content] subsOffset → ${subsOffset.toFixed(1)}s`);
+  }
+  if (changes.chunkSeconds) {
+    chunkSeconds = changes.chunkSeconds.newValue || 5;
+    console.log(`[content] chunkSeconds → ${chunkSeconds}s (restart capture to apply)`);
   }
 });
 
@@ -324,6 +330,7 @@ async function start() {
 
   state.capturer = new AudioCapturer(video, {
     onChunk: handleChunk,
+    chunkSeconds,
   });
   try {
     await state.capturer.start();
@@ -427,7 +434,23 @@ function stop() {
 
 // ---------- progress messages from offscreen ----------
 
-chrome.runtime.onMessage.addListener((msg) => {
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg?.type === 'clear-cache') {
+    clearAllSubs().then(() => {
+      // Reset in-memory state too so the current overlay clears.
+      state.noSegs = [];
+      state.enSegs = [];
+      const ov = document.getElementById(OVERLAY_ID);
+      if (ov) {
+        ov.querySelector('.norskvenn-no').textContent = '';
+        ov.querySelector('.norskvenn-en').textContent = '';
+      }
+      setStatus('Subtitle cache cleared. Re-transcribe to rebuild.');
+      sendResponse?.({ ok: true });
+    }).catch((e) => sendResponse?.({ ok: false, error: String(e) }));
+    return true;  // async response
+  }
+
   if (msg?.type !== 'whisper-progress') return;
   const d = msg.data || {};
   // Possible shapes from transformers.js progress_callback:

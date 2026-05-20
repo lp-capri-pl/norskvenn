@@ -103,3 +103,32 @@ button:hover { filter: brightness(1.08); }
   min-width: 56px;
 }
 .offset-display.zero { color: #7a766e; font-weight: 500; }
+
+.interval-row { display: flex; gap: 6px; }
+.interval {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 8px;
+  border: 1px solid #d8d3c8;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.interval:hover { background: #f1ede4; }
+.interval span { display: flex; flex-direction: column; font-weight: 600; }
+.interval small { font-weight: 400; color: #7a766e; font-size: 11px; }
+
+button.danger {
+  width: 100%;
+  padding: 8px;
+  font: inherit;
+  font-weight: 600;
+  background: #fff;
+  color: #b53a3a;
+  border: 1px solid #e0b4b4;
+  border-radius: 4px;
+  cursor: pointer;
+}
+button.danger:hover { background: #fbeaea; }
+button.danger:disabled { opacity: 0.5; cursor: default; }

@@ -1,6 +1,6 @@
 {
   "name": "norskvenn",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Chrome extension that generates bilingual Norwegian + English subtitles for any YouTube video, all in your browser.",
   "type": "module",
   "private": true,

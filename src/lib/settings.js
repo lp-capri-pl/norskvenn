@@ -10,6 +10,10 @@ const DEFAULTS = {
   // (use when subs lag the spoken word). Negative = subs appear later (use
   // when subs run ahead of the audio). Stored in seconds.
   subsOffset: 0,
+  // Audio chunk length in seconds. Smaller = subtitles arrive more often
+  // (lower live latency) at a small accuracy cost near chunk boundaries.
+  // Cost is unaffected (OpenAI bills per second of audio, not per request).
+  chunkSeconds: 5,
 };
 
 export function getSettings() {
