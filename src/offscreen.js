@@ -189,7 +189,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
         case 'transcribe-chunk': {
           // ensure-whisper should have loaded this already; this is just a safety net.
-          if (!transcribe) await loadModel(msg.modelId || 'Xenova/whisper-small');
+          if (!transcribe) await loadModel(msg.modelId || 'Xenova/nb-whisper-base-beta');
           const samples = new Float32Array(Object.values(msg.samples));
           const task = msg.task || 'transcribe';        // 'transcribe' or 'translate'
           const langHint = msg.languageHint ?? 'no';

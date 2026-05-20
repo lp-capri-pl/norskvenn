@@ -14,13 +14,16 @@ import { AudioCapturer } from './lib/audio.js';
 import { loadSubs, saveSubs } from './lib/cache.js';
 import { bilingualSrt } from './lib/srt.js';
 
-// whisper-base is the speed/quality sweet spot for live transcription in
-// browser. On consumer GPUs, whisper-small takes 30-60s per 10s chunk
-// (impossibly slow — subs are obsolete by the time they arrive). Base is
-// ~3x faster and good enough for follow-along language learning.
-// To upgrade: 'Xenova/whisper-small' (240MB, better NO but needs strong GPU).
-const MODEL_ID = 'Xenova/whisper-base';
-const MODEL_SIZE_MB = 75;
+// nb-whisper-base-beta is the Norwegian-finetuned Whisper from the National
+// Library of Norway (NbAiLab), converted to transformers.js format. Same
+// architecture size as whisper-base (so ~same speed on the user's GPU) but
+// trained on 66k hours of Norwegian — dramatically better NO accuracy than
+// generic whisper-base.
+// Upgrades available if your GPU has headroom:
+//   'Xenova/nb-whisper-small-beta'  (~600MB, much better but ~3x slower)
+//   'Xenova/whisper-small'          (240MB, generic — worse NO)
+const MODEL_ID = 'Xenova/nb-whisper-base-beta';
+const MODEL_SIZE_MB = 210;
 const BTN_ID = 'norskvenn-btn';
 const OVERLAY_ID = 'norskvenn-overlay';
 

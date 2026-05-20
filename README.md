@@ -12,8 +12,10 @@ alongside Norwegian to follow along.
 
 1. Open any YouTube watch page → a red **🇳🇴 Live subs** button appears next
    to Like / Share.
-2. Click it. First run downloads `Xenova/whisper-base` (~145 MB) into your
-   browser cache. Subsequent uses are instant.
+2. Click it. First run downloads `Xenova/nb-whisper-base-beta` (~210 MB)
+   into your browser cache. This is the Norwegian-finetuned Whisper from
+   the National Library of Norway — far more accurate on Norwegian than
+   generic Whisper. Subsequent uses are instant.
 3. The extension captures the player's audio via `HTMLVideoElement.captureStream()`,
    buckets it into 30-second chunks, and runs each chunk through Whisper twice
    inside an offscreen document — once in `transcribe` mode (Norwegian text)
