@@ -68,6 +68,29 @@ function getVideoIdFromUrl() {
 
 function $video() { return document.querySelector('video.html5-main-video'); }
 
+// Collapse accumulated duplicate/overlapping segments. Repeated watches used
+// to append fresh transcripts on top of cached ones without dedup, ballooning
+// the arrays (e.g. 701 NO vs 43 EN). We sort by start and drop entries that
+// duplicate or are fully swallowed by the one before them.
+function dedupeSegs(segs) {
+  const sorted = [...segs]
+    .filter((s) => s && typeof s.start === 'number' && s.text)
+    .sort((a, b) => a.start - b.start || a.end - b.end);
+  const out = [];
+  for (const s of sorted) {
+    const prev = out[out.length - 1];
+    if (prev) {
+      const sameText = prev.text.trim() === s.text.trim();
+      const nearSameStart = Math.abs(prev.start - s.start) < 0.6;
+      // exact-ish duplicate, OR this segment is contained within the previous
+      const contained = s.start >= prev.start - 0.3 && s.end <= prev.end + 0.3;
+      if ((sameText && nearSameStart) || (sameText && contained)) continue;
+    }
+    out.push(s);
+  }
+  return out;
+}
+
 function tellBg(msg) {
   return chrome.runtime.sendMessage({ target: 'background', ...msg });
 }
@@ -268,8 +291,8 @@ async function autoLoadCachedSubs() {
   const cached = await loadSubs(vid);
   if (!cached || (!cached.no?.length && !cached.en?.length)) return;
 
-  state.noSegs = cached.no || [];
-  state.enSegs = cached.en || [];
+  state.noSegs = dedupeSegs(cached.no || []);
+  state.enSegs = dedupeSegs(cached.en || []);
   state.active = true;
   injectOverlay();
   setStatus(
@@ -306,8 +329,8 @@ async function start() {
     state.enSegs = [];
     const cached = await loadSubs(state.videoId);
     if (cached) {
-      state.noSegs = cached.no || [];
-      state.enSegs = cached.en || [];
+      state.noSegs = dedupeSegs(cached.no || []);
+      state.enSegs = dedupeSegs(cached.en || []);
     }
     state.active = true;
   }
@@ -358,7 +381,7 @@ async function handleChunk(samples, startTime) {
   const enCached = isCovered(state.enSegs);
 
   if (noCached && enCached) {
-    setStatus(`Chunk ${id} ✓ cached (${liveCount()})`);
+    setStatus(`✓ cached, no API call (${liveCount()})`);
     return;
   }
 
@@ -398,6 +421,9 @@ async function handleChunk(samples, startTime) {
     if (enRes?.ok) state.enSegs.push(...enRes.segs);
   }
 
+  // Dedupe before persisting so the cache can't balloon across re-watches.
+  state.noSegs = dedupeSegs(state.noSegs);
+  state.enSegs = dedupeSegs(state.enSegs);
   await saveSubs(state.videoId, {
     no: state.noSegs,
     en: state.enSegs,
