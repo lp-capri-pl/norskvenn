@@ -30,8 +30,12 @@ export class AudioCapturer {
 
     this.buffer = new Float32Array(CHUNK_SAMPLES);
     this.bufferOffset = 0;
-    this.chunkStartTime = 0;
     this.running = false;
+
+    // Seek handler: when the user scrubs, the audio still in our buffer
+    // belongs to the pre-seek video position. Discarding it ensures every
+    // emitted chunk's samples correspond to a contiguous range of video time.
+    this._onSeeked = null;
   }
 
   async start() {
@@ -71,7 +75,15 @@ export class AudioCapturer {
     this.processor.connect(sink);
     sink.connect(this.audioCtx.destination);
 
-    this.chunkStartTime = this.videoEl.currentTime;
+    // Drop any partial buffer when the user seeks — otherwise a chunk would
+    // splice together pre-seek and post-seek audio, producing nonsense
+    // transcripts AND poisoning the cache for the new time range.
+    this._onSeeked = () => {
+      if (!this.running) return;
+      console.log(`[audio] seeked to ${this.videoEl.currentTime.toFixed(1)}s — discarding partial buffer (${this.bufferOffset} samples)`);
+      this.bufferOffset = 0;
+    };
+    this.videoEl.addEventListener('seeked', this._onSeeked);
   }
 
   _onAudio(e) {
@@ -101,8 +113,13 @@ export class AudioCapturer {
   _emit() {
     // Copy because we're about to refill `this.buffer`.
     const chunk = new Float32Array(this.buffer);
-    const startTime = this.chunkStartTime;
-    this.chunkStartTime = startTime + CHUNK_SECONDS;
+    // Derive the chunk's video time range from the *actual* current playback
+    // position. Subtracting the chunk's duration gives us its start. This
+    // tracks seeks correctly because seeks discard the buffer (above), so by
+    // the time we emit, the buffer is always a contiguous window ending at
+    // video.currentTime.
+    const chunkSeconds = chunk.length / SAMPLE_RATE;
+    const startTime = Math.max(0, this.videoEl.currentTime - chunkSeconds);
     this.bufferOffset = 0;
 
     // Diagnostic: amplitude check. If max < 0.001 the captured stream is
@@ -128,6 +145,10 @@ export class AudioCapturer {
   stop() {
     if (!this.running) return;
     this.running = false;
+    if (this._onSeeked) {
+      try { this.videoEl.removeEventListener('seeked', this._onSeeked); } catch {}
+      this._onSeeked = null;
+    }
     try { this.processor?.disconnect(); } catch {}
     try { this.source?.disconnect(); } catch {}
     try { this.audioCtx?.close(); } catch {}
@@ -135,7 +156,9 @@ export class AudioCapturer {
     // Flush any partial buffer as a short final chunk.
     if (this.bufferOffset > SAMPLE_RATE) {  // >1s of audio
       const chunk = this.buffer.slice(0, this.bufferOffset);
-      if (this.onChunk) this.onChunk(chunk, this.chunkStartTime);
+      const chunkSec = chunk.length / SAMPLE_RATE;
+      const startTime = Math.max(0, this.videoEl.currentTime - chunkSec);
+      if (this.onChunk) this.onChunk(chunk, startTime);
     }
     this.bufferOffset = 0;
   }

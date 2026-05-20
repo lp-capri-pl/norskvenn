@@ -283,40 +283,55 @@ async function start() {
 
 async function handleChunk(samples, startTime) {
   const id = ++state.chunkSeq;
+  const chunkSeconds = samples.length / 16000;
+  const endTime = startTime + chunkSeconds;
 
-  // Two passes: Norwegian first so users see *something* ~50% sooner,
-  // English translation follows. Each runs as a separate background
-  // message — both share the same Whisper pipeline so they serialize
-  // at the ONNX session anyway, but issuing them separately lets us
-  // render NO subs as soon as they arrive.
   const liveCount = () =>
     `${state.noSegs.length} NO · ${state.enSegs.length} EN`;
 
-  setStatus(`Chunk ${id} → transcribing NO… (${liveCount()})`);
-  const noRes = await tellBg({
-    type: 'transcribe-chunk',
-    chunkId: id,
-    samples,
-    startTime,
-    task: 'transcribe',
-    languageHint: 'no',
-  });
-  if (!noRes?.ok) {
-    setStatus(`Chunk ${id} NO failed: ${noRes?.error || 'unknown'}`);
+  // Cache hit check: does any existing segment overlap this chunk's video
+  // time range? If yes, the user already paid (or computed locally) for
+  // this audio in a previous play-through — skip the API/inference call.
+  // We track NO and EN separately so a re-run can fill in a missing pass.
+  const isCovered = (segs) =>
+    segs.some((s) => s.start < endTime && s.end > startTime);
+  const noCached = isCovered(state.noSegs);
+  const enCached = isCovered(state.enSegs);
+
+  if (noCached && enCached) {
+    setStatus(`Chunk ${id} ✓ cached (${liveCount()})`);
     return;
   }
-  state.noSegs.push(...noRes.segs);
-  setStatus(`Chunk ${id} → translating EN… (${liveCount()})`);
 
-  const enRes = await tellBg({
-    type: 'transcribe-chunk',
-    chunkId: id,
-    samples,
-    startTime,
-    task: 'translate',
-    languageHint: 'no',
-  });
-  if (enRes?.ok) state.enSegs.push(...enRes.segs);
+  if (!noCached) {
+    setStatus(`Chunk ${id} → transcribing NO… (${liveCount()})`);
+    const noRes = await tellBg({
+      type: 'transcribe-chunk',
+      chunkId: id,
+      samples,
+      startTime,
+      task: 'transcribe',
+      languageHint: 'no',
+    });
+    if (!noRes?.ok) {
+      setStatus(`Chunk ${id} NO failed: ${noRes?.error || 'unknown'}`);
+      return;
+    }
+    state.noSegs.push(...noRes.segs);
+  }
+
+  if (!enCached) {
+    setStatus(`Chunk ${id} → translating EN… (${liveCount()})`);
+    const enRes = await tellBg({
+      type: 'transcribe-chunk',
+      chunkId: id,
+      samples,
+      startTime,
+      task: 'translate',
+      languageHint: 'no',
+    });
+    if (enRes?.ok) state.enSegs.push(...enRes.segs);
+  }
 
   await saveSubs(state.videoId, {
     no: state.noSegs,
