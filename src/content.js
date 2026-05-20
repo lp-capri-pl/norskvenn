@@ -29,11 +29,13 @@ const OVERLAY_ID = 'norskvenn-overlay';
 
 let state = {
   videoId: null,
-  active: false,
+  active: false,       // overlay rendering on (cached display OR live capture)
+  capturing: false,    // AudioCapturer running (only true while transcribing new content)
   capturer: null,
   noSegs: [],
   enSegs: [],
   chunkSeq: 0,
+  engine: 'local',
 };
 
 // ---------- helpers ----------
@@ -219,11 +221,38 @@ function renderCue() {
 // ---------- transcription flow ----------
 
 async function onToggle() {
-  if (state.active) {
+  if (state.capturing) {
     stop();
     return;
   }
   await start();
+}
+
+// On video page entry, eagerly load any cached subs for this videoId and
+// render them — no button click required, no audio capture started, no lag.
+// The user can still click the button later to add transcription for any
+// uncached portion (e.g. content beyond what they watched last time).
+async function autoLoadCachedSubs() {
+  const vid = getVideoIdFromUrl();
+  if (!vid || vid === state.videoId) return;
+  if (state.capturing) return;   // don't clobber an active live session
+
+  state.videoId = vid;
+  state.noSegs = [];
+  state.enSegs = [];
+  state.active = false;
+
+  const cached = await loadSubs(vid);
+  if (!cached || (!cached.no?.length && !cached.en?.length)) return;
+
+  state.noSegs = cached.no || [];
+  state.enSegs = cached.en || [];
+  state.active = true;
+  injectOverlay();
+  setStatus(
+    `Cached subs ready — ${state.noSegs.length} NO · ${state.enSegs.length} EN. ` +
+    `Click 🇳🇴 button to transcribe any new section.`,
+  );
 }
 
 async function start() {
@@ -238,20 +267,26 @@ async function start() {
     try { await video.play(); } catch {}
   }
 
-  state.videoId = getVideoIdFromUrl();
-  state.active = true;
-  state.noSegs = [];
-  state.enSegs = [];
+  const newVid = getVideoIdFromUrl();
   state.chunkSeq = 0;
+  state.capturing = true;
   injectOverlay();
   document.getElementById(BTN_ID).textContent = '⏹ Stop subs';
   document.getElementById(BTN_ID).classList.add('active');
 
-  // Replay any cached partial result.
-  const cached = await loadSubs(state.videoId);
-  if (cached) {
-    state.noSegs = cached.no || [];
-    state.enSegs = cached.en || [];
+  // If autoLoadCachedSubs already populated state for this video, preserve it.
+  // Otherwise load cache fresh here (e.g. user clicked the button before
+  // autoLoadCachedSubs finished, or there was no cache hit yet).
+  if (!state.active || state.videoId !== newVid) {
+    state.videoId = newVid;
+    state.noSegs = [];
+    state.enSegs = [];
+    const cached = await loadSubs(state.videoId);
+    if (cached) {
+      state.noSegs = cached.no || [];
+      state.enSegs = cached.en || [];
+    }
+    state.active = true;
   }
 
   // Probe the engine so status messages match what's actually running.
@@ -342,14 +377,17 @@ async function handleChunk(samples, startTime) {
 }
 
 function stop() {
-  state.active = false;
+  // Stop capture but keep the overlay + cached subs visible — the user is
+  // probably done transcribing new content but still wants to watch with
+  // the subs they already have.
+  state.capturing = false;
   state.capturer?.stop();
   state.capturer = null;
   if (state.videoId && state.noSegs.length) {
     saveSubs(state.videoId, {
       no: state.noSegs,
       en: state.enSegs,
-      complete: false,  // user stopped mid-stream
+      complete: false,
     });
   }
   const btn = document.getElementById(BTN_ID);
@@ -357,7 +395,11 @@ function stop() {
     btn.textContent = '🇳🇴 Live subs';
     btn.classList.remove('active');
   }
-  setStatus('Stopped. Click again to resume.');
+  setStatus(
+    state.noSegs.length
+      ? `Stopped. ${state.noSegs.length} NO · ${state.enSegs.length} EN cached.`
+      : 'Stopped.',
+  );
 }
 
 // ---------- progress messages from offscreen ----------
@@ -390,13 +432,16 @@ let lastPath = location.href;
 function tick() {
   if (location.href !== lastPath) {
     lastPath = location.href;
-    if (state.active) stop();
+    if (state.capturing) stop();
     // Clear the cue between videos.
     const ov = document.getElementById(OVERLAY_ID);
     if (ov) {
       ov.querySelector('.norskvenn-no').textContent = '';
       ov.querySelector('.norskvenn-en').textContent = '';
     }
+    // Eagerly try cached subs for the new video so they appear without
+    // requiring a button click.
+    autoLoadCachedSubs();
   }
   if (getVideoIdFromUrl() && !document.getElementById(BTN_ID)) {
     injectButton();
