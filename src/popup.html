@@ -37,6 +37,22 @@
       </p>
     </fieldset>
 
+    <fieldset>
+      <legend>Subtitle timing</legend>
+      <div class="offset-row">
+        <button type="button" class="nudge" data-delta="-0.5">− 0.5s</button>
+        <button type="button" class="nudge" data-delta="-0.1">− 0.1s</button>
+        <span id="offset-display" class="offset-display">0.0s</span>
+        <button type="button" class="nudge" data-delta="0.1">+ 0.1s</button>
+        <button type="button" class="nudge" data-delta="0.5">+ 0.5s</button>
+        <button type="button" class="reset" id="offset-reset" title="Reset to 0">↺</button>
+      </div>
+      <p class="hint">
+        Subs late? Use <b>+</b>. Subs early? Use <b>−</b>. Changes apply
+        immediately to the current YouTube tab on save.
+      </p>
+    </fieldset>
+
     <div class="actions">
       <button type="submit">Save</button>
       <span id="status" class="status"></span>

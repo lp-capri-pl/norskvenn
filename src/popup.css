@@ -65,3 +65,41 @@ button:hover { filter: brightness(1.08); }
 .status { font-size: 12px; color: #7a766e; }
 .status.ok  { color: #2f7a3f; }
 .status.err { color: #b53a3a; }
+
+.offset-row {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  margin: 4px 0 4px;
+}
+.offset-row .nudge {
+  flex: 1;
+  padding: 6px 0;
+  font-size: 12px;
+  font-weight: 600;
+  background: #f1ede4;
+  color: #1f1e1c;
+  border: 1px solid #d8d3c8;
+  border-radius: 4px;
+}
+.offset-row .nudge:hover { background: #e6dfd0; }
+.offset-row .reset {
+  padding: 6px 9px;
+  font-size: 13px;
+  background: #fff;
+  color: #7a766e;
+  border: 1px solid #d8d3c8;
+  border-radius: 4px;
+}
+.offset-display {
+  flex: 1.2;
+  text-align: center;
+  font: 600 14px/1 'Fraunces', Georgia, serif;
+  color: #b54a2a;
+  padding: 6px 0;
+  background: #fff;
+  border: 1px solid #d8d3c8;
+  border-radius: 4px;
+  min-width: 56px;
+}
+.offset-display.zero { color: #7a766e; font-weight: 500; }

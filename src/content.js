@@ -14,6 +14,20 @@ import { AudioCapturer } from './lib/audio.js';
 import { loadSubs, saveSubs } from './lib/cache.js';
 import { bilingualSrt } from './lib/srt.js';
 
+// Live-read subtitle timing offset from chrome.storage. Updated via the
+// popup's +/-0.1s and +/-0.5s buttons; renderCue picks up changes within
+// one tick (250ms).
+let subsOffset = 0;
+chrome.storage?.local.get(['subsOffset'], (s) => {
+  subsOffset = s.subsOffset || 0;
+});
+chrome.storage?.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.subsOffset) {
+    subsOffset = changes.subsOffset.newValue || 0;
+    console.log(`[content] subsOffset → ${subsOffset.toFixed(1)}s`);
+  }
+});
+
 // nb-whisper-base-beta is the Norwegian-finetuned Whisper from the National
 // Library of Norway (NbAiLab), converted to transformers.js format. Same
 // architecture size as whisper-base (so ~same speed on the user's GPU) but
@@ -182,7 +196,10 @@ function setStatus(text) {
 function renderCue() {
   const el = document.getElementById(OVERLAY_ID);
   if (!el || !state.active) return;
-  const t = $video()?.currentTime ?? 0;
+  // Apply the user-controlled timing nudge. Positive offset shifts subs
+  // earlier (effectiveT > videoT means we look up subs as if the video
+  // were further along, which surfaces them sooner).
+  const t = ($video()?.currentTime ?? 0) + subsOffset;
 
   // Primary: subtitle whose [start, end] window contains the current playback
   // time. Falls back to the most-recently-transcribed segment if we're

@@ -6,6 +6,10 @@
 const DEFAULTS = {
   engine: 'local',         // 'local' | 'api'
   apiKey: '',
+  // Manual timing nudge applied in renderCue. Positive = subs appear earlier
+  // (use when subs lag the spoken word). Negative = subs appear later (use
+  // when subs run ahead of the audio). Stored in seconds.
+  subsOffset: 0,
 };
 
 export function getSettings() {
