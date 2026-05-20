@@ -4,7 +4,7 @@ export default defineManifest({
   manifest_version: 3,
   name: 'Norskvenn — Norwegian YouTube subs',
   short_name: 'Norskvenn',
-  version: '0.2.0',
+  version: '0.3.0',
   description:
     'Generate bilingual Norwegian + English subtitles for any YouTube video, all in your browser.',
 
@@ -22,7 +22,14 @@ export default defineManifest({
     // transformers.js downloads model weights from huggingface.co
     'https://huggingface.co/*',
     'https://cdn-lfs.huggingface.co/*',
+    // OpenAI Audio API (opt-in via popup settings)
+    'https://api.openai.com/*',
   ],
+
+  action: {
+    default_title: 'Norskvenn settings',
+    default_popup: 'src/popup.html',
+  },
 
   // MV3's default CSP blocks WebAssembly.instantiate(). Without
   // 'wasm-unsafe-eval' the ORT WASM runtime in the offscreen doc throws

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Norskvenn settings</title>
+  <link rel="stylesheet" href="./popup.css">
+</head>
+<body>
+  <h1>Norskvenn</h1>
+
+  <form id="settings">
+    <fieldset>
+      <legend>Engine</legend>
+      <label class="opt">
+        <input type="radio" name="engine" value="local">
+        <span>
+          <b>Local Whisper</b> (free, runs on your GPU)
+          <small>NB-Whisper-base in browser. Free but slower + less accurate.</small>
+        </span>
+      </label>
+      <label class="opt">
+        <input type="radio" name="engine" value="api">
+        <span>
+          <b>OpenAI API</b> (paid, ~$0.012/min of video)
+          <small>whisper-1 via OpenAI. Top accuracy, fast. You provide a key.</small>
+        </span>
+      </label>
+    </fieldset>
+
+    <fieldset id="api-fieldset" class="api-only" hidden>
+      <legend>OpenAI API key</legend>
+      <input type="password" name="apiKey" placeholder="sk-..." autocomplete="off">
+      <p class="hint">
+        Stored locally in your browser only. Get a key at
+        <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">
+          platform.openai.com/api-keys</a>.
+      </p>
+    </fieldset>
+
+    <div class="actions">
+      <button type="submit">Save</button>
+      <span id="status" class="status"></span>
+    </div>
+  </form>
+
+  <script type="module" src="./popup.js"></script>
+</body>
+</html>

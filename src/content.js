@@ -244,7 +244,6 @@ async function start() {
   state.enSegs = [];
   state.chunkSeq = 0;
   injectOverlay();
-  setStatus(`Loading Whisper ${MODEL_ID.split('/')[1]}… (first run downloads ~${MODEL_SIZE_MB} MB)`);
   document.getElementById(BTN_ID).textContent = '⏹ Stop subs';
   document.getElementById(BTN_ID).classList.add('active');
 
@@ -253,15 +252,23 @@ async function start() {
   if (cached) {
     state.noSegs = cached.no || [];
     state.enSegs = cached.en || [];
-    setStatus(cached.complete ? 'Loaded cached subs' : 'Resuming…');
   }
+
+  // Probe the engine so status messages match what's actually running.
+  const eng = await tellBg({ type: 'get-engine' });
+  state.engine = eng?.engine || 'local';
+  setStatus(
+    state.engine === 'api'
+      ? 'Engine: OpenAI API. Initialising…'
+      : `Loading Whisper ${MODEL_ID.split('/')[1]}… (first run downloads ~${MODEL_SIZE_MB} MB)`,
+  );
 
   const res = await tellBg({ type: 'ensure-whisper', modelId: MODEL_ID });
   if (!res?.ok) {
-    setStatus(`Whisper load failed: ${res?.error || 'unknown'}`);
+    setStatus(`Engine init failed: ${res?.error || 'unknown'}`);
     return stop();
   }
-  setStatus('Capturing audio…');
+  setStatus(res.engine === 'api' ? 'Engine: OpenAI API. Capturing audio…' : 'Capturing audio…');
 
   state.capturer = new AudioCapturer(video, {
     onChunk: handleChunk,

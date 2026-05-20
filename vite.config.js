@@ -45,6 +45,7 @@ export default defineConfig({
       // not by an HTML script tag, so crxjs needs to be told about it.
       input: {
         offscreen: 'src/offscreen.html',
+        popup: 'src/popup.html',
       },
     },
     target: 'esnext',
