@@ -369,6 +369,12 @@ async function handleChunk(samples, startTime) {
       setStatus(`Chunk ${id} NO failed: ${noRes?.error || 'unknown'}`);
       return;
     }
+    // Diagnostic: absolute timestamps of returned segments. Compare these to
+    // when you actually hear the words in the video to spot any timing error.
+    console.log(
+      `[chunk ${id}] startTime=${startTime.toFixed(2)}s → NO:`,
+      noRes.segs.map((s) => `${s.start.toFixed(1)}–${s.end.toFixed(1)} "${s.text.slice(0, 24)}"`).join('  |  ') || '(empty)',
+    );
     state.noSegs.push(...noRes.segs);
   }
 

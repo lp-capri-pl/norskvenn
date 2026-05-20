@@ -32,9 +32,16 @@ export class AudioCapturer {
     this.bufferOffset = 0;
     this.running = false;
 
-    // Seek handler: when the user scrubs, the audio still in our buffer
-    // belongs to the pre-seek video position. Discarding it ensures every
-    // emitted chunk's samples correspond to a contiguous range of video time.
+    // Sample-accurate timing. Rather than read video.currentTime at each
+    // emit (which jitters because the JS callback fires at an unpredictable
+    // moment after the audio was actually captured), we anchor to the video
+    // time when capture started and advance by the exact number of samples
+    // emitted. Audio is continuous, so sample count → time is drift-free.
+    this._anchorVideoTime = 0;     // video time at capture start / last seek
+    this._emittedSamples = 0;      // total samples emitted since the anchor
+
+    // Seek handler: discard the partial buffer AND re-anchor, because after a
+    // seek the sample stream corresponds to a new video position.
     this._onSeeked = null;
   }
 
@@ -75,13 +82,18 @@ export class AudioCapturer {
     this.processor.connect(sink);
     sink.connect(this.audioCtx.destination);
 
-    // Drop any partial buffer when the user seeks — otherwise a chunk would
-    // splice together pre-seek and post-seek audio, producing nonsense
-    // transcripts AND poisoning the cache for the new time range.
+    this._anchorVideoTime = this.videoEl.currentTime;
+    this._emittedSamples = 0;
+
+    // Drop any partial buffer when the user seeks AND re-anchor timing —
+    // otherwise a chunk would splice together pre/post-seek audio AND the
+    // sample counter would map to the wrong video position.
     this._onSeeked = () => {
       if (!this.running) return;
-      console.log(`[audio] seeked to ${this.videoEl.currentTime.toFixed(1)}s — discarding partial buffer (${this.bufferOffset} samples)`);
+      console.log(`[audio] seeked to ${this.videoEl.currentTime.toFixed(1)}s — re-anchoring`);
       this.bufferOffset = 0;
+      this._anchorVideoTime = this.videoEl.currentTime;
+      this._emittedSamples = 0;
     };
     this.videoEl.addEventListener('seeked', this._onSeeked);
   }
@@ -113,13 +125,10 @@ export class AudioCapturer {
   _emit() {
     // Copy because we're about to refill `this.buffer`.
     const chunk = new Float32Array(this.buffer);
-    // Derive the chunk's video time range from the *actual* current playback
-    // position. Subtracting the chunk's duration gives us its start. This
-    // tracks seeks correctly because seeks discard the buffer (above), so by
-    // the time we emit, the buffer is always a contiguous window ending at
-    // video.currentTime.
-    const chunkSeconds = chunk.length / SAMPLE_RATE;
-    const startTime = Math.max(0, this.videoEl.currentTime - chunkSeconds);
+    // Sample-accurate start time: anchor + duration of all audio emitted so
+    // far. Drift-free because it doesn't depend on when the JS callback fires.
+    const startTime = this._anchorVideoTime + this._emittedSamples / SAMPLE_RATE;
+    this._emittedSamples += chunk.length;
     this.bufferOffset = 0;
 
     // Diagnostic: amplitude check. If max < 0.001 the captured stream is
@@ -156,8 +165,8 @@ export class AudioCapturer {
     // Flush any partial buffer as a short final chunk.
     if (this.bufferOffset > SAMPLE_RATE) {  // >1s of audio
       const chunk = this.buffer.slice(0, this.bufferOffset);
-      const chunkSec = chunk.length / SAMPLE_RATE;
-      const startTime = Math.max(0, this.videoEl.currentTime - chunkSec);
+      const startTime = this._anchorVideoTime + this._emittedSamples / SAMPLE_RATE;
+      this._emittedSamples += chunk.length;
       if (this.onChunk) this.onChunk(chunk, startTime);
     }
     this.bufferOffset = 0;

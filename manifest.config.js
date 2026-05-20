@@ -4,7 +4,7 @@ export default defineManifest({
   manifest_version: 3,
   name: 'Norskvenn — Norwegian YouTube subs',
   short_name: 'Norskvenn',
-  version: '0.6.0',
+  version: '0.7.0',
   description:
     'Generate bilingual Norwegian + English subtitles for any YouTube video, all in your browser.',
 
