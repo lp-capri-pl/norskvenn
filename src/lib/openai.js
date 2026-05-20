@@ -49,7 +49,29 @@ export async function transcribeViaApi({ apiKey, samples, task, language }) {
 
   const json = await resp.json();
   const segs = Array.isArray(json.segments) ? json.segments : [];
-  const parsed = segs
+
+  // Self-check: drop segments Whisper itself flags as low-confidence or
+  // non-speech. These are the same thresholds OpenAI's reference Whisper
+  // uses to detect hallucination/garbage:
+  //   no_speech_prob high + avg_logprob low  → music/silence misheard as speech
+  //   avg_logprob < -1.0                     → model is guessing
+  //   compression_ratio > 2.4                → repetitive hallucination loop
+  let dropped = 0;
+  const keep = segs.filter((s) => {
+    const noSpeech = (s.no_speech_prob ?? 0) > 0.6 && (s.avg_logprob ?? 0) < -0.5;
+    const lowConf = (s.avg_logprob ?? 0) < -1.0;
+    const repetitive = (s.compression_ratio ?? 0) > 2.4;
+    if (noSpeech || lowConf || repetitive) {
+      dropped++;
+      return false;
+    }
+    return true;
+  });
+  if (dropped) {
+    console.log(`[openai] self-check dropped ${dropped}/${segs.length} low-confidence segment(s)`);
+  }
+
+  const parsed = keep
     .map((s) => ({
       start: s.start ?? 0,
       end: s.end ?? s.start ?? 0,
@@ -59,9 +81,14 @@ export async function transcribeViaApi({ apiKey, samples, task, language }) {
 
   if (parsed.length) return parsed;
 
-  const fullText = (json.text || '').trim();
-  if (fullText) {
-    return [{ start: 0, end: json.duration || samples.length / 16000, text: fullText }];
+  // Only fall back to the flat text when the API returned NO segments at all.
+  // If it returned segments but the self-check dropped them all, the text is
+  // the same low-quality output — return nothing rather than show garbage.
+  if (segs.length === 0) {
+    const fullText = (json.text || '').trim();
+    if (fullText) {
+      return [{ start: 0, end: json.duration || samples.length / 16000, text: fullText }];
+    }
   }
   return [];
 }
